@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import FloatingParticles from "@/components/FloatingParticles";
 import Index from "./pages/Index.tsx";
 import Booking from "./pages/Booking.tsx";
 import Checkout from "./pages/Checkout.tsx";
@@ -16,6 +17,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <FloatingParticles />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />

@@ -90,12 +90,22 @@ export default {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-10px)" },
         },
+        "pulse-red": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.6" },
+        },
+        "glow-breathe": {
+          "0%, 100%": { boxShadow: "0 0 10px hsl(220 90% 56% / 0.4), 0 0 30px hsl(220 90% 56% / 0.2)" },
+          "50%": { boxShadow: "0 0 20px hsl(220 90% 56% / 0.6), 0 0 50px hsl(220 90% 56% / 0.3)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-neon": "pulse-neon 2s ease-in-out infinite",
         "float": "float 3s ease-in-out infinite",
+        "pulse-red": "pulse-red 1.5s ease-in-out infinite",
+        "glow-breathe": "glow-breathe 3s ease-in-out infinite",
       },
     },
   },
