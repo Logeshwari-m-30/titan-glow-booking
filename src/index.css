@@ -88,6 +88,35 @@
   .gradient-neon {
     background: linear-gradient(135deg, hsl(var(--neon-blue)), hsl(var(--neon-purple)));
   }
+  .neon-btn-hover {
+    @apply relative overflow-hidden;
+  }
+  .neon-btn-hover::after {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(135deg, hsl(var(--neon-blue) / 0.3), hsl(var(--neon-purple) / 0.3));
+  }
+  .neon-btn-hover:hover::after {
+    @apply opacity-100;
+  }
+  .slot-card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+  .slot-card-hover:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 20px hsl(var(--neon-blue) / 0.4);
+  }
+  .gaming-bg {
+    position: relative;
+  }
+  .gaming-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, hsl(var(--neon-blue) / 0.15), hsl(var(--neon-purple) / 0.15));
+    pointer-events: none;
+    z-index: 0;
+  }
 }
 
 @keyframes pulse-neon {
@@ -98,4 +127,24 @@
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-red {
+  0%, 100% { 
+    opacity: 1;
+    box-shadow: 0 0 8px hsl(var(--neon-red) / 0.6);
+  }
+  50% { 
+    opacity: 0.7;
+    box-shadow: 0 0 20px hsl(var(--neon-red) / 0.9);
+  }
+}
+
+@keyframes glow-breathe {
+  0%, 100% {
+    box-shadow: 0 0 10px hsl(var(--neon-blue) / 0.4), 0 0 30px hsl(var(--neon-blue) / 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px hsl(var(--neon-blue) / 0.6), 0 0 50px hsl(var(--neon-blue) / 0.3);
+  }
 }
