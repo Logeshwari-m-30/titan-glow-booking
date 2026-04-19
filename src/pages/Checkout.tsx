@@ -26,18 +26,27 @@ const Checkout = () => {
     }
 
     setLoading(true);
-    try {
-      const { error } = await supabase.from("bookings").insert({
-        name: booking.name,
-        phone: booking.phone,
-        booking_date: booking.date ? format(booking.date, "yyyy-MM-dd") : "",
-        time_slot: booking.timeSlot?.label || "",
-        console_type: booking.console || "",
-        players: booking.players,
-      });
+    const payload = {
+      name: booking.name.trim(),
+      phone: booking.phone.trim(),
+      booking_date: booking.date ? format(booking.date, "yyyy-MM-dd") : "",
+      time_slot: booking.timeSlot?.label || "",
+      console_type: booking.console || "",
+      players: booking.players,
+    };
 
+    try {
+      const { error } = await supabase.from("bookings").insert(payload);
       if (error) throw error;
 
+      // Fire-and-forget Google Sheets sync — don't block confirmation if it fails
+      supabase.functions
+        .invoke("sync-to-sheets", { body: payload })
+        .then(({ error: syncError }) => {
+          if (syncError) console.error("Google Sheets sync failed:", syncError);
+        });
+
+      toast.success("Booking confirmed!");
       confirmBooking();
       navigate("/confirmation");
     } catch (err) {
