@@ -24,9 +24,9 @@ Deno.serve(async (req) => {
     const payload = {
       name: String(name),
       phone: String(phone),
-      booking_date: String(booking_date),
-      time_slot: String(time_slot),
-      console_type: String(console_type),
+      date: String(booking_date),
+      slot: String(time_slot),
+      console: String(console_type),
       players: Number(players ?? 1),
       timestamp: new Date().toISOString(),
     };

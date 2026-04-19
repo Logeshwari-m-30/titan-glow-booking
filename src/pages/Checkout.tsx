@@ -46,7 +46,7 @@ const Checkout = () => {
           if (syncError) console.error("Google Sheets sync failed:", syncError);
         });
 
-      toast.success("Booking confirmed!");
+      toast.success("Booking saved successfully!");
       confirmBooking();
       navigate("/confirmation");
     } catch (err) {
