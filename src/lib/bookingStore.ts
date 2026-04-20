@@ -2,11 +2,15 @@ import { create } from "zustand";
 
 export type Console = "PS5" | "PS4" | "PS2";
 
+export const CONSOLE_LIMITS: Record<Console, number> = {
+  PS5: 4,
+  PS4: 4,
+  PS2: 2,
+};
+
 export interface TimeSlot {
   id: string;
   label: string;
-  booked: number;
-  max: number;
 }
 
 export interface BookingData {
@@ -28,8 +32,6 @@ const generateSlots = (): TimeSlot[] => {
     slots.push({
       id: `slot-${h}`,
       label: `${startHour}:00 ${startPeriod} – ${endHour}:00 ${endPeriod}`,
-      booked: Math.floor(Math.random() * 10),
-      max: 12,
     });
   }
   return slots;
@@ -59,10 +61,10 @@ export const useBookingStore = create<BookingStore>((set) => ({
   },
   slots: generateSlots(),
   confirmed: false,
-  setDate: (date) => set((s) => ({ booking: { ...s.booking, date }, slots: generateSlots() })),
+  setDate: (date) => set((s) => ({ booking: { ...s.booking, date } })),
   setTimeSlot: (slot) => set((s) => ({ booking: { ...s.booking, timeSlot: slot } })),
   setConsole: (c) => set((s) => ({ booking: { ...s.booking, console: c } })),
-  setPlayers: (n) => set((s) => ({ booking: { ...s.booking, players: Math.min(n, 12) } })),
+  setPlayers: (n) => set((s) => ({ booking: { ...s.booking, players: Math.max(1, n) } })),
   setName: (name) => set((s) => ({ booking: { ...s.booking, name } })),
   setPhone: (phone) => set((s) => ({ booking: { ...s.booking, phone } })),
   confirmBooking: () => set({ confirmed: true }),
