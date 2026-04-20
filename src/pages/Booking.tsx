@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Users, Gamepad2 } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Users, Gamepad2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBookingStore, type Console, CONSOLE_LIMITS } from "@/lib/bookingStore";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,51 +19,66 @@ const consoleOptions: { value: Console; label: string; emoji: string }[] = [
   { value: "PS2", label: "PlayStation 2", emoji: "👾" },
 ];
 
-// Compare only the local-date portion (ignore time, ignore UTC)
 const startOfLocalDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const isPastDate = (d: Date) => startOfLocalDay(d).getTime() < startOfLocalDay(new Date()).getTime();
 
+// "HH:mm" -> minutes since 00:00. Returns NaN if invalid.
+const toMinutes = (t: string): number => {
+  if (!/^\d{2}:\d{2}$/.test(t)) return NaN;
+  const [h, m] = t.split(":").map(Number);
+  if (h > 23 || m > 59) return NaN;
+  return h * 60 + m;
+};
+
+const formatTimeLabel = (t: string): string => {
+  const m = toMinutes(t);
+  if (Number.isNaN(m)) return t;
+  const h = Math.floor(m / 60);
+  const mm = (m % 60).toString().padStart(2, "0");
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${mm} ${period}`;
+};
+
+interface BookingRow {
+  console_type: string;
+  players: number;
+  start_time: string | null;
+  end_time: string | null;
+}
+
 const Booking = () => {
   const navigate = useNavigate();
-  const { booking, slots, setDate, setTimeSlot, setConsole, setPlayers } = useBookingStore();
+  const { booking, setDate, setStartTime, setEndTime, setConsole, setPlayers } = useBookingStore();
   const [step, setStep] = useState(1);
-  // bookedBySlotConsole[slotLabel][console] = totalPlayersBooked
-  const [bookedMap, setBookedMap] = useState<Record<string, Record<Console, number>>>({});
+  const [dayBookings, setDayBookings] = useState<BookingRow[]>([]);
   const [loadingAvail, setLoadingAvail] = useState(false);
 
-  // Fetch availability for the selected date (and refresh on console/slot change)
+  // Fetch all bookings for selected date (with realtime refresh)
   useEffect(() => {
     if (!booking.date) return;
     let cancelled = false;
-    const fetchAvailability = async () => {
+    const fetchBookings = async () => {
       setLoadingAvail(true);
       const dateStr = format(booking.date!, "yyyy-MM-dd");
       const { data, error } = await supabase
         .from("bookings")
-        .select("time_slot, console_type, players")
+        .select("console_type, players, start_time, end_time")
         .eq("booking_date", dateStr);
       if (cancelled) return;
       if (error) {
         console.error("Availability fetch failed:", error);
-        setBookedMap({});
+        setDayBookings([]);
       } else {
-        const map: Record<string, Record<Console, number>> = {};
-        for (const row of data || []) {
-          const slot = row.time_slot as string;
-          const cons = row.console_type as Console;
-          if (!map[slot]) map[slot] = { PS5: 0, PS4: 0, PS2: 0 };
-          if (cons in map[slot]) map[slot][cons] += row.players ?? 0;
-        }
-        setBookedMap(map);
+        setDayBookings((data as BookingRow[]) || []);
       }
       setLoadingAvail(false);
     };
-    fetchAvailability();
+    fetchBookings();
 
-    // Realtime: refresh when bookings change
     const channel = supabase
       .channel("bookings-availability")
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, fetchAvailability)
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, fetchBookings)
       .subscribe();
 
     return () => {
@@ -71,16 +87,37 @@ const Booking = () => {
     };
   }, [booking.date]);
 
+  const startMin = toMinutes(booking.startTime);
+  const endMin = toMinutes(booking.endTime);
+  const validTimeRange =
+    !Number.isNaN(startMin) && !Number.isNaN(endMin) && endMin > startMin;
+
+  // Compute overlapping booked players per console for the chosen time window
+  const overlapByConsole = useMemo(() => {
+    const result: Record<Console, number> = { PS5: 0, PS4: 0, PS2: 0 };
+    if (!validTimeRange) return result;
+    for (const row of dayBookings) {
+      if (!row.start_time || !row.end_time) continue;
+      const rs = toMinutes(row.start_time.slice(0, 5));
+      const re = toMinutes(row.end_time.slice(0, 5));
+      if (Number.isNaN(rs) || Number.isNaN(re)) continue;
+      // Overlap: new_start < existing_end AND new_end > existing_start
+      if (startMin < re && endMin > rs) {
+        const c = row.console_type as Console;
+        if (c in result) result[c] += row.players ?? 0;
+      }
+    }
+    return result;
+  }, [dayBookings, startMin, endMin, validTimeRange]);
+
   const getRemaining = (cons: Console): number => {
-    if (!booking.timeSlot) return CONSOLE_LIMITS[cons];
-    const booked = bookedMap[booking.timeSlot.label]?.[cons] ?? 0;
-    return Math.max(0, CONSOLE_LIMITS[cons] - booked);
+    if (!validTimeRange) return CONSOLE_LIMITS[cons];
+    return Math.max(0, CONSOLE_LIMITS[cons] - overlapByConsole[cons]);
   };
 
   const remainingForSelected = booking.console ? getRemaining(booking.console) : 0;
   const maxPlayers = booking.console ? remainingForSelected : 1;
 
-  // Clamp players if remaining shrinks
   useEffect(() => {
     if (booking.console && booking.players > remainingForSelected && remainingForSelected > 0) {
       setPlayers(remainingForSelected);
@@ -88,7 +125,7 @@ const Booking = () => {
   }, [remainingForSelected, booking.console]);
 
   const canProceed = () => {
-    if (step === 1) return !!booking.date && !!booking.timeSlot;
+    if (step === 1) return !!booking.date && validTimeRange;
     if (step === 2)
       return (
         !!booking.console &&
@@ -99,8 +136,12 @@ const Booking = () => {
   };
 
   const handleNext = () => {
+    if (step === 1 && !validTimeRange) {
+      toast.error("End time must be after start time.");
+      return;
+    }
     if (step === 2 && booking.console && booking.players > remainingForSelected) {
-      toast.error(`Only ${remainingForSelected} seats left for ${booking.console}`);
+      toast.error(`${booking.console} has only ${remainingForSelected} seats available for this time`);
       return;
     }
     if (step < 2) setStep(step + 1);
@@ -110,7 +151,6 @@ const Booking = () => {
   return (
     <PageTransition>
       <div className="min-h-screen bg-background relative z-10">
-        {/* Background */}
         <div className="fixed inset-0 z-0">
           <img src={gamingBg} alt="" className="w-full h-full object-cover opacity-15 blur-[3px]" width={1920} height={1080} loading="lazy" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/80 to-background" />
@@ -125,7 +165,6 @@ const Booking = () => {
 
             <h1 className="font-heading text-3xl md:text-4xl text-foreground text-glow-blue mb-8">Book Your Slot</h1>
 
-            {/* Progress */}
             <div className="flex gap-2 mb-10">
               {[1, 2].map((s) => (
                 <div key={s} className={cn("h-1.5 flex-1 rounded-full transition-all duration-500", s <= step ? "gradient-neon" : "bg-muted")} />
@@ -134,7 +173,6 @@ const Booking = () => {
 
             {step === 1 && (
               <div className="space-y-8">
-                {/* Date Picker */}
                 <div>
                   <label className="font-heading text-sm text-muted-foreground mb-2 block">Select Date</label>
                   <Popover>
@@ -157,44 +195,39 @@ const Booking = () => {
                   </Popover>
                 </div>
 
-                {/* Time Slots */}
                 {booking.date && (
                   <div>
-                    <label className="font-heading text-sm text-muted-foreground mb-3 block">Select Time Slot</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {slots.map((slot) => {
-                        const slotBooked = bookedMap[slot.label] || { PS5: 0, PS4: 0, PS2: 0 };
-                        const totalLimit = CONSOLE_LIMITS.PS5 + CONSOLE_LIMITS.PS4 + CONSOLE_LIMITS.PS2;
-                        const totalBooked = slotBooked.PS5 + slotBooked.PS4 + slotBooked.PS2;
-                        const left = totalLimit - totalBooked;
-                        const isFull = left <= 0;
-                        const isSelected = booking.timeSlot?.id === slot.id;
-
-                        return (
-                          <button
-                            key={slot.id}
-                            disabled={isFull}
-                            onClick={() => setTimeSlot(slot)}
-                            className={cn(
-                              "p-4 rounded-lg border text-left slot-card-hover transition-all duration-300",
-                              isFull && "opacity-40 cursor-not-allowed bg-muted border-border",
-                              !isFull && !isSelected && "bg-card neon-border hover:neon-glow-blue cursor-pointer",
-                              isSelected && "gradient-neon neon-glow-blue border-transparent"
-                            )}
-                          >
-                            <div className={cn("font-medium text-sm", isSelected ? "text-primary-foreground" : "text-foreground")}>
-                              {slot.label}
-                            </div>
-                            <div className={cn(
-                              "text-xs mt-1 font-medium",
-                              isFull ? "text-muted-foreground" : isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
-                            )}>
-                              {isFull ? "FULL" : `${left}/${totalLimit} seats available`}
-                            </div>
-                          </button>
-                        );
-                      })}
+                    <label className="font-heading text-sm text-muted-foreground mb-3 block">
+                      <Clock className="w-4 h-4 inline mr-1" /> Select Time Range
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">Start Time</label>
+                        <Input
+                          type="time"
+                          value={booking.startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="bg-card neon-border"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">End Time</label>
+                        <Input
+                          type="time"
+                          value={booking.endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="bg-card neon-border"
+                        />
+                      </div>
                     </div>
+                    {booking.startTime && booking.endTime && !validTimeRange && (
+                      <p className="text-xs text-neon-red mt-2">End time must be after start time.</p>
+                    )}
+                    {validTimeRange && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Selected: {formatTimeLabel(booking.startTime)} – {formatTimeLabel(booking.endTime)}
+                      </p>
+                    )}
                     {loadingAvail && (
                       <p className="text-xs text-muted-foreground mt-2">Loading availability…</p>
                     )}
@@ -205,7 +238,6 @@ const Booking = () => {
 
             {step === 2 && (
               <div className="space-y-8">
-                {/* Console Selection */}
                 <div>
                   <label className="font-heading text-sm text-muted-foreground mb-3 block">
                     <Gamepad2 className="w-4 h-4 inline mr-1" /> Select Console
@@ -252,9 +284,11 @@ const Booking = () => {
                       );
                     })}
                   </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Availability shown for {formatTimeLabel(booking.startTime)} – {formatTimeLabel(booking.endTime)}
+                  </p>
                 </div>
 
-                {/* Group Booking */}
                 <div>
                   <label className="font-heading text-sm text-muted-foreground mb-3 block">
                     <Users className="w-4 h-4 inline mr-1" /> Number of Players
@@ -276,14 +310,13 @@ const Booking = () => {
                   </div>
                   {booking.console && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      Max {maxPlayers} players for {booking.console} ({remainingForSelected} seats left)
+                      Max {maxPlayers} players for {booking.console} ({remainingForSelected} seats available for this time)
                     </p>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Navigation */}
             <div className="mt-10 flex gap-4">
               {step > 1 && (
                 <Button variant="outline" className="neon-border bg-card" onClick={() => setStep(step - 1)}>Back</Button>

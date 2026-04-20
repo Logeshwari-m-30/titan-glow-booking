@@ -30,7 +30,9 @@ const Checkout = () => {
       name: booking.name.trim(),
       phone: booking.phone.trim(),
       booking_date: booking.date ? format(booking.date, "yyyy-MM-dd") : "",
-      time_slot: booking.timeSlot?.label || "",
+      start_time: booking.startTime,
+      end_time: booking.endTime,
+      time_slot: `${booking.startTime} - ${booking.endTime}`,
       console_type: booking.console || "",
       players: booking.players,
     };
@@ -82,7 +84,11 @@ const Checkout = () => {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Time</span>
-                <span className="text-foreground">{booking.timeSlot?.label || "–"}</span>
+                <span className="text-foreground">
+                  {booking.startTime && booking.endTime
+                    ? `${booking.startTime} – ${booking.endTime}`
+                    : "–"}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Console</span>

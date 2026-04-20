@@ -12,9 +12,9 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { name, phone, booking_date, time_slot, console_type, players } = body ?? {};
+    const { name, phone, booking_date, time_slot, start_time, end_time, console_type, players } = body ?? {};
 
-    if (!name || !phone || !booking_date || !time_slot || !console_type) {
+    if (!name || !phone || !booking_date || !start_time || !end_time || !console_type) {
       return new Response(
         JSON.stringify({ success: false, error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -25,7 +25,9 @@ Deno.serve(async (req) => {
       name: String(name),
       phone: String(phone),
       date: String(booking_date),
-      slot: String(time_slot),
+      slot: String(time_slot ?? `${start_time} - ${end_time}`),
+      start_time: String(start_time),
+      end_time: String(end_time),
       console: String(console_type),
       players: Number(players ?? 1),
       timestamp: new Date().toISOString(),
