@@ -19,31 +19,37 @@ export type Database = {
           booking_date: string
           console_type: string
           created_at: string
+          end_time: string | null
           id: string
           name: string
           phone: string
           players: number
-          time_slot: string
+          start_time: string | null
+          time_slot: string | null
         }
         Insert: {
           booking_date: string
           console_type: string
           created_at?: string
+          end_time?: string | null
           id?: string
           name: string
           phone: string
           players?: number
-          time_slot: string
+          start_time?: string | null
+          time_slot?: string | null
         }
         Update: {
           booking_date?: string
           console_type?: string
           created_at?: string
+          end_time?: string | null
           id?: string
           name?: string
           phone?: string
           players?: number
-          time_slot?: string
+          start_time?: string | null
+          time_slot?: string | null
         }
         Relationships: []
       }
