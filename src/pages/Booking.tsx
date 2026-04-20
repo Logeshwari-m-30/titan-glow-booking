@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { format } from "date-fns";
 import { CalendarIcon, ArrowLeft, Users, Gamepad2 } from "lucide-react";
@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useBookingStore, type Console } from "@/lib/bookingStore";
+import { useBookingStore, type Console, CONSOLE_LIMITS } from "@/lib/bookingStore";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import gamingBg from "@/assets/gaming-bg.jpg";
 
@@ -16,18 +18,93 @@ const consoleOptions: { value: Console; label: string; emoji: string }[] = [
   { value: "PS2", label: "PlayStation 2", emoji: "👾" },
 ];
 
+// Compare only the local-date portion (ignore time, ignore UTC)
+const startOfLocalDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const isPastDate = (d: Date) => startOfLocalDay(d).getTime() < startOfLocalDay(new Date()).getTime();
+
 const Booking = () => {
   const navigate = useNavigate();
   const { booking, slots, setDate, setTimeSlot, setConsole, setPlayers } = useBookingStore();
   const [step, setStep] = useState(1);
+  // bookedBySlotConsole[slotLabel][console] = totalPlayersBooked
+  const [bookedMap, setBookedMap] = useState<Record<string, Record<Console, number>>>({});
+  const [loadingAvail, setLoadingAvail] = useState(false);
 
-  const seatsLeft = booking.timeSlot ? booking.timeSlot.max - booking.timeSlot.booked : 0;
-  const maxPlayers = booking.timeSlot ? Math.min(12, seatsLeft) : 12;
+  // Fetch availability for the selected date (and refresh on console/slot change)
+  useEffect(() => {
+    if (!booking.date) return;
+    let cancelled = false;
+    const fetchAvailability = async () => {
+      setLoadingAvail(true);
+      const dateStr = format(booking.date!, "yyyy-MM-dd");
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("time_slot, console_type, players")
+        .eq("booking_date", dateStr);
+      if (cancelled) return;
+      if (error) {
+        console.error("Availability fetch failed:", error);
+        setBookedMap({});
+      } else {
+        const map: Record<string, Record<Console, number>> = {};
+        for (const row of data || []) {
+          const slot = row.time_slot as string;
+          const cons = row.console_type as Console;
+          if (!map[slot]) map[slot] = { PS5: 0, PS4: 0, PS2: 0 };
+          if (cons in map[slot]) map[slot][cons] += row.players ?? 0;
+        }
+        setBookedMap(map);
+      }
+      setLoadingAvail(false);
+    };
+    fetchAvailability();
+
+    // Realtime: refresh when bookings change
+    const channel = supabase
+      .channel("bookings-availability")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, fetchAvailability)
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [booking.date]);
+
+  const getRemaining = (cons: Console): number => {
+    if (!booking.timeSlot) return CONSOLE_LIMITS[cons];
+    const booked = bookedMap[booking.timeSlot.label]?.[cons] ?? 0;
+    return Math.max(0, CONSOLE_LIMITS[cons] - booked);
+  };
+
+  const remainingForSelected = booking.console ? getRemaining(booking.console) : 0;
+  const maxPlayers = booking.console ? remainingForSelected : 1;
+
+  // Clamp players if remaining shrinks
+  useEffect(() => {
+    if (booking.console && booking.players > remainingForSelected && remainingForSelected > 0) {
+      setPlayers(remainingForSelected);
+    }
+  }, [remainingForSelected, booking.console]);
 
   const canProceed = () => {
     if (step === 1) return !!booking.date && !!booking.timeSlot;
-    if (step === 2) return !!booking.console && booking.players >= 1;
+    if (step === 2)
+      return (
+        !!booking.console &&
+        booking.players >= 1 &&
+        booking.players <= remainingForSelected
+      );
     return false;
+  };
+
+  const handleNext = () => {
+    if (step === 2 && booking.console && booking.players > remainingForSelected) {
+      toast.error(`Only ${remainingForSelected} seats left for ${booking.console}`);
+      return;
+    }
+    if (step < 2) setStep(step + 1);
+    else navigate("/checkout");
   };
 
   return (
@@ -72,7 +149,7 @@ const Booking = () => {
                         mode="single"
                         selected={booking.date}
                         onSelect={setDate}
-                        disabled={(date) => date < new Date()}
+                        disabled={isPastDate}
                         initialFocus
                         className="p-3 pointer-events-auto"
                       />
@@ -86,9 +163,11 @@ const Booking = () => {
                     <label className="font-heading text-sm text-muted-foreground mb-3 block">Select Time Slot</label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {slots.map((slot) => {
-                        const left = slot.max - slot.booked;
+                        const slotBooked = bookedMap[slot.label] || { PS5: 0, PS4: 0, PS2: 0 };
+                        const totalLimit = CONSOLE_LIMITS.PS5 + CONSOLE_LIMITS.PS4 + CONSOLE_LIMITS.PS2;
+                        const totalBooked = slotBooked.PS5 + slotBooked.PS4 + slotBooked.PS2;
+                        const left = totalLimit - totalBooked;
                         const isFull = left <= 0;
-                        const almostFull = left > 0 && left < 4;
                         const isSelected = booking.timeSlot?.id === slot.id;
 
                         return (
@@ -97,11 +176,10 @@ const Booking = () => {
                             disabled={isFull}
                             onClick={() => setTimeSlot(slot)}
                             className={cn(
-                              "p-4 rounded-lg border text-left slot-card-hover",
+                              "p-4 rounded-lg border text-left slot-card-hover transition-all duration-300",
                               isFull && "opacity-40 cursor-not-allowed bg-muted border-border",
                               !isFull && !isSelected && "bg-card neon-border hover:neon-glow-blue cursor-pointer",
-                              isSelected && "gradient-neon neon-glow-blue border-transparent",
-                              almostFull && !isSelected && "animate-pulse-red"
+                              isSelected && "gradient-neon neon-glow-blue border-transparent"
                             )}
                           >
                             <div className={cn("font-medium text-sm", isSelected ? "text-primary-foreground" : "text-foreground")}>
@@ -109,14 +187,17 @@ const Booking = () => {
                             </div>
                             <div className={cn(
                               "text-xs mt-1 font-medium",
-                              isFull ? "text-muted-foreground" : almostFull ? "text-neon-red" : isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
+                              isFull ? "text-muted-foreground" : isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
                             )}>
-                              {isFull ? "FULL" : almostFull ? `⚠ Almost Full – ${left} seats left` : `${left}/${slot.max} seats available`}
+                              {isFull ? "FULL" : `${left}/${totalLimit} seats available`}
                             </div>
                           </button>
                         );
                       })}
                     </div>
+                    {loadingAvail && (
+                      <p className="text-xs text-muted-foreground mt-2">Loading availability…</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -130,21 +211,46 @@ const Booking = () => {
                     <Gamepad2 className="w-4 h-4 inline mr-1" /> Select Console
                   </label>
                   <div className="grid grid-cols-3 gap-3">
-                    {consoleOptions.map((c) => (
-                      <button
-                        key={c.value}
-                        onClick={() => setConsole(c.value)}
-                        className={cn(
-                          "p-4 rounded-lg border text-center slot-card-hover",
-                          booking.console === c.value ? "gradient-neon neon-glow-purple border-transparent" : "bg-card neon-border hover:neon-glow-purple"
-                        )}
-                      >
-                        <div className="text-3xl mb-2">{c.emoji}</div>
-                        <div className={cn("font-heading text-xs", booking.console === c.value ? "text-primary-foreground" : "text-foreground")}>
-                          {c.value}
-                        </div>
-                      </button>
-                    ))}
+                    {consoleOptions.map((c) => {
+                      const limit = CONSOLE_LIMITS[c.value];
+                      const remaining = getRemaining(c.value);
+                      const isFull = remaining <= 0;
+                      const almostFull = remaining > 0 && remaining <= 1;
+                      const isSelected = booking.console === c.value;
+                      return (
+                        <button
+                          key={c.value}
+                          disabled={isFull}
+                          onClick={() => setConsole(c.value)}
+                          className={cn(
+                            "p-4 rounded-lg border text-center slot-card-hover transition-all duration-300",
+                            isFull && "opacity-40 cursor-not-allowed bg-muted border-border",
+                            !isFull && !isSelected && "bg-card neon-border hover:neon-glow-purple",
+                            isSelected && "gradient-neon neon-glow-purple border-transparent",
+                            almostFull && !isSelected && "animate-pulse-red"
+                          )}
+                        >
+                          <div className="text-3xl mb-2">{c.emoji}</div>
+                          <div className={cn("font-heading text-xs", isSelected ? "text-primary-foreground" : "text-foreground")}>
+                            {c.value}
+                          </div>
+                          <div
+                            className={cn(
+                              "text-[10px] mt-2 font-medium",
+                              isFull
+                                ? "text-muted-foreground"
+                                : almostFull
+                                ? "text-neon-red"
+                                : isSelected
+                                ? "text-primary-foreground/80"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {isFull ? "FULL" : almostFull ? `⚠ Almost Full (${remaining}/${limit})` : `${remaining}/${limit} seats`}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -168,9 +274,9 @@ const Booking = () => {
                       onClick={() => setPlayers(Math.min(maxPlayers, booking.players + 1))}
                     >+</Button>
                   </div>
-                  {booking.timeSlot && (
+                  {booking.console && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      Max {maxPlayers} players for this slot ({seatsLeft} seats left)
+                      Max {maxPlayers} players for {booking.console} ({remainingForSelected} seats left)
                     </p>
                   )}
                 </div>
@@ -185,7 +291,7 @@ const Booking = () => {
               <Button
                 disabled={!canProceed()}
                 className="flex-1 gradient-neon text-primary-foreground font-heading animate-glow-breathe hover:scale-[1.03] transition-transform disabled:opacity-40 disabled:animate-none"
-                onClick={() => step < 2 ? setStep(step + 1) : navigate("/checkout")}
+                onClick={handleNext}
               >
                 {step < 2 ? "Next" : "Proceed to Checkout"}
               </Button>
