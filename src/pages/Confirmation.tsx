@@ -34,7 +34,11 @@ const Confirmation = () => {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Time</span>
-              <span className="text-foreground">{booking.timeSlot?.label || "–"}</span>
+              <span className="text-foreground">
+                {booking.startTime && booking.endTime
+                  ? `${booking.startTime} – ${booking.endTime}`
+                  : "–"}
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Console</span>
