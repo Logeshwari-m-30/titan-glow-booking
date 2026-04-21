@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Users, Gamepad2, Clock } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Users, Gamepad2, Clock, IndianRupee } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBookingStore, type Console, CONSOLE_LIMITS } from "@/lib/bookingStore";
+import { calculatePrice, DURATION_OPTIONS, addMinutesToTime, getDurationMinutes, type Duration } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
@@ -49,7 +50,7 @@ interface BookingRow {
 
 const Booking = () => {
   const navigate = useNavigate();
-  const { booking, setDate, setStartTime, setEndTime, setConsole, setPlayers } = useBookingStore();
+  const { booking, setDate, setStartTime, setEndTime, setConsole, setPlayers, setDuration, setPrice } = useBookingStore();
   const [step, setStep] = useState(1);
   const [dayBookings, setDayBookings] = useState<BookingRow[]>([]);
   const [loadingAvail, setLoadingAvail] = useState(false);
@@ -124,13 +125,32 @@ const Booking = () => {
     }
   }, [remainingForSelected, booking.console]);
 
+  // When duration changes (or start time changes), auto-fill end time
+  useEffect(() => {
+    if (booking.duration && booking.startTime) {
+      const newEnd = addMinutesToTime(booking.startTime, getDurationMinutes(booking.duration));
+      if (newEnd && newEnd !== booking.endTime) setEndTime(newEnd);
+    }
+  }, [booking.duration, booking.startTime]);
+
+  // Recalculate price whenever console / players / duration change
+  const totalPrice = useMemo(
+    () => calculatePrice(booking.console, booking.players, booking.duration),
+    [booking.console, booking.players, booking.duration]
+  );
+
+  useEffect(() => {
+    setPrice(totalPrice);
+  }, [totalPrice]);
+
   const canProceed = () => {
-    if (step === 1) return !!booking.date && validTimeRange;
+    if (step === 1) return !!booking.date && !!booking.duration && validTimeRange;
     if (step === 2)
       return (
         !!booking.console &&
         booking.players >= 1 &&
-        booking.players <= remainingForSelected
+        booking.players <= remainingForSelected &&
+        totalPrice > 0
       );
     return false;
   };
@@ -198,33 +218,40 @@ const Booking = () => {
                 {booking.date && (
                   <div>
                     <label className="font-heading text-sm text-muted-foreground mb-3 block">
-                      <Clock className="w-4 h-4 inline mr-1" /> Select Time Range
+                      <Clock className="w-4 h-4 inline mr-1" /> Select Start Time
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">Start Time</label>
-                        <Input
-                          type="time"
-                          value={booking.startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
-                          className="bg-card neon-border"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">End Time</label>
-                        <Input
-                          type="time"
-                          value={booking.endTime}
-                          onChange={(e) => setEndTime(e.target.value)}
-                          className="bg-card neon-border"
-                        />
-                      </div>
+                    <Input
+                      type="time"
+                      value={booking.startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="bg-card neon-border"
+                    />
+
+                    <label className="font-heading text-sm text-muted-foreground mb-3 mt-6 block">
+                      Select Duration
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {DURATION_OPTIONS.map((d) => (
+                        <button
+                          key={d.value}
+                          onClick={() => setDuration(d.value)}
+                          className={cn(
+                            "p-3 rounded-lg border text-center font-heading text-xs transition-all duration-300",
+                            booking.duration === d.value
+                              ? "gradient-neon text-primary-foreground border-transparent neon-glow-purple"
+                              : "bg-card neon-border text-foreground hover:neon-glow-blue"
+                          )}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
                     </div>
+
                     {booking.startTime && booking.endTime && !validTimeRange && (
                       <p className="text-xs text-neon-red mt-2">End time must be after start time.</p>
                     )}
                     {validTimeRange && (
-                      <p className="text-xs text-muted-foreground mt-2">
+                      <p className="text-xs text-muted-foreground mt-3">
                         Selected: {formatTimeLabel(booking.startTime)} – {formatTimeLabel(booking.endTime)}
                       </p>
                     )}
@@ -254,9 +281,10 @@ const Booking = () => {
                           key={c.value}
                           disabled={isFull}
                           onClick={() => setConsole(c.value)}
+                          title={isFull ? "All slots are booked for this time" : undefined}
                           className={cn(
                             "p-4 rounded-lg border text-center slot-card-hover transition-all duration-300",
-                            isFull && "opacity-40 cursor-not-allowed bg-muted border-border",
+                            isFull && "opacity-40 cursor-not-allowed bg-muted border-border blur-[1px]",
                             !isFull && !isSelected && "bg-card neon-border hover:neon-glow-purple",
                             isSelected && "gradient-neon neon-glow-purple border-transparent",
                             almostFull && !isSelected && "animate-pulse-red"
@@ -270,7 +298,7 @@ const Booking = () => {
                             className={cn(
                               "text-[10px] mt-2 font-medium",
                               isFull
-                                ? "text-muted-foreground"
+                                ? "text-neon-red"
                                 : almostFull
                                 ? "text-neon-red"
                                 : isSelected
@@ -278,7 +306,7 @@ const Booking = () => {
                                 : "text-muted-foreground"
                             )}
                           >
-                            {isFull ? "FULL" : almostFull ? `⚠ Almost Full (${remaining}/${limit})` : `${remaining}/${limit} seats`}
+                            {isFull ? "BOOKED" : almostFull ? `⚠ Almost Full (${remaining}/${limit})` : `${remaining}/${limit} seats`}
                           </div>
                         </button>
                       );
@@ -314,6 +342,21 @@ const Booking = () => {
                     </p>
                   )}
                 </div>
+
+                {/* Price Display */}
+                {totalPrice > 0 && (
+                  <div className="rounded-xl p-6 gradient-neon neon-glow-purple animate-glow-breathe text-center">
+                    <div className="flex items-center justify-center gap-2 text-primary-foreground/80 text-xs font-heading mb-1">
+                      <IndianRupee className="w-3 h-3" /> TOTAL PRICE
+                    </div>
+                    <div className="font-heading text-4xl text-primary-foreground font-black">
+                      ₹{totalPrice}
+                    </div>
+                    <div className="text-[11px] text-primary-foreground/70 mt-1">
+                      {booking.console} · {booking.players}P · {DURATION_OPTIONS.find(d => d.value === booking.duration)?.label}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

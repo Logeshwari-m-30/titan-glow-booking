@@ -105,7 +105,7 @@ const Index = () => {
 
         {/* WhatsApp */}
         <a
-          href="https://wa.me/919876543210"
+          href="https://wa.me/917639646961"
           target="_blank"
           rel="noopener noreferrer"
           className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
@@ -118,7 +118,12 @@ const Index = () => {
         </a>
 
         {/* Footer */}
-        <footer className="py-8 text-center border-t border-border">
+        <footer className="py-8 text-center border-t border-border space-y-2">
+          <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+            <a href="tel:+917639646961" className="hover:text-neon-cyan transition-colors">📞 +91 76396 46961</a>
+            <span className="opacity-30">|</span>
+            <a href="tel:+919566924901" className="hover:text-neon-cyan transition-colors">📞 +91 95669 24901</a>
+          </div>
           <p className="text-muted-foreground text-sm">© 2026 TITANS GAMING. All rights reserved.</p>
         </footer>
       </div>

@@ -35,6 +35,7 @@ const Checkout = () => {
       time_slot: `${booking.startTime} - ${booking.endTime}`,
       console_type: booking.console || "",
       players: booking.players,
+      price: booking.price,
     };
 
     try {
@@ -97,6 +98,10 @@ const Checkout = () => {
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Players</span>
                 <span className="text-foreground">{booking.players}</span>
+              </div>
+              <div className="flex justify-between text-sm pt-3 border-t border-border">
+                <span className="text-muted-foreground">Total Price</span>
+                <span className="font-heading text-lg text-neon-cyan text-glow-blue">₹{booking.price}</span>
               </div>
               <div className="flex justify-between text-sm pt-3 border-t border-border">
                 <span className="text-muted-foreground">Payment</span>

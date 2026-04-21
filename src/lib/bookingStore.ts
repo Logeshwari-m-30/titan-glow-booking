@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { Duration } from "./pricing";
 
 export type Console = "PS5" | "PS4" | "PS2";
 
@@ -14,6 +15,8 @@ export interface BookingData {
   endTime: string;   // "HH:mm"
   console: Console | undefined;
   players: number;
+  duration: Duration | undefined;
+  price: number;
   name: string;
   phone: string;
 }
@@ -25,6 +28,8 @@ interface BookingStore {
   setEndTime: (t: string) => void;
   setConsole: (c: Console) => void;
   setPlayers: (n: number) => void;
+  setDuration: (d: Duration) => void;
+  setPrice: (p: number) => void;
   setName: (name: string) => void;
   setPhone: (phone: string) => void;
   confirmBooking: () => void;
@@ -38,6 +43,8 @@ export const useBookingStore = create<BookingStore>((set) => ({
     endTime: "",
     console: undefined,
     players: 1,
+    duration: undefined,
+    price: 0,
     name: "",
     phone: "",
   },
@@ -47,6 +54,8 @@ export const useBookingStore = create<BookingStore>((set) => ({
   setEndTime: (t) => set((s) => ({ booking: { ...s.booking, endTime: t } })),
   setConsole: (c) => set((s) => ({ booking: { ...s.booking, console: c } })),
   setPlayers: (n) => set((s) => ({ booking: { ...s.booking, players: Math.max(1, n) } })),
+  setDuration: (d) => set((s) => ({ booking: { ...s.booking, duration: d } })),
+  setPrice: (p) => set((s) => ({ booking: { ...s.booking, price: p } })),
   setName: (name) => set((s) => ({ booking: { ...s.booking, name } })),
   setPhone: (phone) => set((s) => ({ booking: { ...s.booking, phone } })),
   confirmBooking: () => set({ confirmed: true }),
