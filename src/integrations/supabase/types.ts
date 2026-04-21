@@ -24,6 +24,7 @@ export type Database = {
           name: string
           phone: string
           players: number
+          price: number | null
           start_time: string | null
           time_slot: string | null
         }
@@ -36,6 +37,7 @@ export type Database = {
           name: string
           phone: string
           players?: number
+          price?: number | null
           start_time?: string | null
           time_slot?: string | null
         }
@@ -48,6 +50,7 @@ export type Database = {
           name?: string
           phone?: string
           players?: number
+          price?: number | null
           start_time?: string | null
           time_slot?: string | null
         }
