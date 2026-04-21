@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Users, Gamepad2, Clock } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Users, Gamepad2, Clock, IndianRupee } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBookingStore, type Console, CONSOLE_LIMITS } from "@/lib/bookingStore";
+import { calculatePrice, DURATION_OPTIONS, addMinutesToTime, getDurationMinutes, type Duration } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
