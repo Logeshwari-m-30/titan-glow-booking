@@ -218,33 +218,40 @@ const Booking = () => {
                 {booking.date && (
                   <div>
                     <label className="font-heading text-sm text-muted-foreground mb-3 block">
-                      <Clock className="w-4 h-4 inline mr-1" /> Select Time Range
+                      <Clock className="w-4 h-4 inline mr-1" /> Select Start Time
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">Start Time</label>
-                        <Input
-                          type="time"
-                          value={booking.startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
-                          className="bg-card neon-border"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">End Time</label>
-                        <Input
-                          type="time"
-                          value={booking.endTime}
-                          onChange={(e) => setEndTime(e.target.value)}
-                          className="bg-card neon-border"
-                        />
-                      </div>
+                    <Input
+                      type="time"
+                      value={booking.startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="bg-card neon-border"
+                    />
+
+                    <label className="font-heading text-sm text-muted-foreground mb-3 mt-6 block">
+                      Select Duration
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {DURATION_OPTIONS.map((d) => (
+                        <button
+                          key={d.value}
+                          onClick={() => setDuration(d.value)}
+                          className={cn(
+                            "p-3 rounded-lg border text-center font-heading text-xs transition-all duration-300",
+                            booking.duration === d.value
+                              ? "gradient-neon text-primary-foreground border-transparent neon-glow-purple"
+                              : "bg-card neon-border text-foreground hover:neon-glow-blue"
+                          )}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
                     </div>
+
                     {booking.startTime && booking.endTime && !validTimeRange && (
                       <p className="text-xs text-neon-red mt-2">End time must be after start time.</p>
                     )}
                     {validTimeRange && (
-                      <p className="text-xs text-muted-foreground mt-2">
+                      <p className="text-xs text-muted-foreground mt-3">
                         Selected: {formatTimeLabel(booking.startTime)} – {formatTimeLabel(booking.endTime)}
                       </p>
                     )}
@@ -274,9 +281,10 @@ const Booking = () => {
                           key={c.value}
                           disabled={isFull}
                           onClick={() => setConsole(c.value)}
+                          title={isFull ? "All slots are booked for this time" : undefined}
                           className={cn(
                             "p-4 rounded-lg border text-center slot-card-hover transition-all duration-300",
-                            isFull && "opacity-40 cursor-not-allowed bg-muted border-border",
+                            isFull && "opacity-40 cursor-not-allowed bg-muted border-border blur-[1px]",
                             !isFull && !isSelected && "bg-card neon-border hover:neon-glow-purple",
                             isSelected && "gradient-neon neon-glow-purple border-transparent",
                             almostFull && !isSelected && "animate-pulse-red"
@@ -290,7 +298,7 @@ const Booking = () => {
                             className={cn(
                               "text-[10px] mt-2 font-medium",
                               isFull
-                                ? "text-muted-foreground"
+                                ? "text-neon-red"
                                 : almostFull
                                 ? "text-neon-red"
                                 : isSelected
@@ -298,7 +306,7 @@ const Booking = () => {
                                 : "text-muted-foreground"
                             )}
                           >
-                            {isFull ? "FULL" : almostFull ? `⚠ Almost Full (${remaining}/${limit})` : `${remaining}/${limit} seats`}
+                            {isFull ? "BOOKED" : almostFull ? `⚠ Almost Full (${remaining}/${limit})` : `${remaining}/${limit} seats`}
                           </div>
                         </button>
                       );
