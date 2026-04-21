@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { name, phone, booking_date, time_slot, start_time, end_time, console_type, players } = body ?? {};
+    const { name, phone, booking_date, time_slot, start_time, end_time, console_type, players, price } = body ?? {};
 
     if (!name || !phone || !booking_date || !start_time || !end_time || !console_type) {
       return new Response(
@@ -30,6 +30,7 @@ Deno.serve(async (req) => {
       end_time: String(end_time),
       console: String(console_type),
       players: Number(players ?? 1),
+      price: Number(price ?? 0),
       timestamp: new Date().toISOString(),
     };
 

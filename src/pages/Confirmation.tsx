@@ -49,6 +49,10 @@ const Confirmation = () => {
               <span className="text-foreground">{booking.players}</span>
             </div>
             <div className="flex justify-between text-sm pt-3 border-t border-border">
+              <span className="text-muted-foreground">Total Price</span>
+              <span className="font-heading text-lg text-neon-cyan text-glow-blue">₹{booking.price}</span>
+            </div>
+            <div className="flex justify-between text-sm pt-3 border-t border-border">
               <span className="text-muted-foreground">Payment</span>
               <span className="text-neon-cyan font-medium">Pay at Shop</span>
             </div>
@@ -56,7 +60,11 @@ const Confirmation = () => {
 
           <div className="flex items-center justify-center gap-2 text-muted-foreground mb-8">
             <Phone className="w-4 h-4" />
-            <span className="text-sm">Contact us: +91 98765 43210</span>
+            <span className="text-sm">
+              Contact us: <a href="tel:+917639646961" className="hover:text-neon-cyan">+91 76396 46961</a>
+              {" / "}
+              <a href="tel:+919566924901" className="hover:text-neon-cyan">+91 95669 24901</a>
+            </span>
           </div>
 
           <Link to="/">
