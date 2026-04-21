@@ -50,7 +50,7 @@ interface BookingRow {
 
 const Booking = () => {
   const navigate = useNavigate();
-  const { booking, setDate, setStartTime, setEndTime, setConsole, setPlayers } = useBookingStore();
+  const { booking, setDate, setStartTime, setEndTime, setConsole, setPlayers, setDuration, setPrice } = useBookingStore();
   const [step, setStep] = useState(1);
   const [dayBookings, setDayBookings] = useState<BookingRow[]>([]);
   const [loadingAvail, setLoadingAvail] = useState(false);
@@ -125,13 +125,32 @@ const Booking = () => {
     }
   }, [remainingForSelected, booking.console]);
 
+  // When duration changes (or start time changes), auto-fill end time
+  useEffect(() => {
+    if (booking.duration && booking.startTime) {
+      const newEnd = addMinutesToTime(booking.startTime, getDurationMinutes(booking.duration));
+      if (newEnd && newEnd !== booking.endTime) setEndTime(newEnd);
+    }
+  }, [booking.duration, booking.startTime]);
+
+  // Recalculate price whenever console / players / duration change
+  const totalPrice = useMemo(
+    () => calculatePrice(booking.console, booking.players, booking.duration),
+    [booking.console, booking.players, booking.duration]
+  );
+
+  useEffect(() => {
+    setPrice(totalPrice);
+  }, [totalPrice]);
+
   const canProceed = () => {
-    if (step === 1) return !!booking.date && validTimeRange;
+    if (step === 1) return !!booking.date && !!booking.duration && validTimeRange;
     if (step === 2)
       return (
         !!booking.console &&
         booking.players >= 1 &&
-        booking.players <= remainingForSelected
+        booking.players <= remainingForSelected &&
+        totalPrice > 0
       );
     return false;
   };
