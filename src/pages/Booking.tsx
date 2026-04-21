@@ -342,6 +342,21 @@ const Booking = () => {
                     </p>
                   )}
                 </div>
+
+                {/* Price Display */}
+                {totalPrice > 0 && (
+                  <div className="rounded-xl p-6 gradient-neon neon-glow-purple animate-glow-breathe text-center">
+                    <div className="flex items-center justify-center gap-2 text-primary-foreground/80 text-xs font-heading mb-1">
+                      <IndianRupee className="w-3 h-3" /> TOTAL PRICE
+                    </div>
+                    <div className="font-heading text-4xl text-primary-foreground font-black">
+                      ₹{totalPrice}
+                    </div>
+                    <div className="text-[11px] text-primary-foreground/70 mt-1">
+                      {booking.console} · {booking.players}P · {DURATION_OPTIONS.find(d => d.value === booking.duration)?.label}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
