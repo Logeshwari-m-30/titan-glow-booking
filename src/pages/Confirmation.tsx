@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useBookingStore } from "@/lib/bookingStore";
 import { format } from "date-fns";
 import PageTransition from "@/components/PageTransition";
+import { formatTimeRange12h } from "@/lib/pricing";
 
 const Confirmation = () => {
   const { booking } = useBookingStore();
@@ -36,7 +37,7 @@ const Confirmation = () => {
               <span className="text-muted-foreground">Time</span>
               <span className="text-foreground">
                 {booking.startTime && booking.endTime
-                  ? `${booking.startTime} – ${booking.endTime}`
+                  ? formatTimeRange12h(booking.startTime, booking.endTime)
                   : "–"}
               </span>
             </div>

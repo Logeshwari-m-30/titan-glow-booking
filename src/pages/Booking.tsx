@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBookingStore, type Console, CONSOLE_LIMITS } from "@/lib/bookingStore";
-import { calculatePrice, DURATION_OPTIONS, addMinutesToTime, getDurationMinutes, type Duration } from "@/lib/pricing";
+import { calculatePrice, DURATION_OPTIONS, addMinutesToTime, getDurationMinutes, formatTime12h, formatTimeRange12h, type Duration } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
@@ -31,15 +31,7 @@ const toMinutes = (t: string): number => {
   return h * 60 + m;
 };
 
-const formatTimeLabel = (t: string): string => {
-  const m = toMinutes(t);
-  if (Number.isNaN(m)) return t;
-  const h = Math.floor(m / 60);
-  const mm = (m % 60).toString().padStart(2, "0");
-  const period = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${mm} ${period}`;
-};
+const formatTimeLabel = (t: string): string => formatTime12h(t) || t;
 
 interface BookingRow {
   console_type: string;
@@ -106,6 +98,25 @@ const Booking = () => {
       if (startMin < re && endMin > rs) {
         const c = row.console_type as Console;
         if (c in result) result[c] += row.players ?? 0;
+      }
+    }
+    return result;
+  }, [dayBookings, startMin, endMin, validTimeRange]);
+
+  // Collect overlapping booked time ranges per console (for "BOOKED (10:30 AM – 11:30 AM)" display)
+  const bookedRangesByConsole = useMemo(() => {
+    const result: Record<Console, string[]> = { PS5: [], PS4: [], PS2: [] };
+    if (!validTimeRange) return result;
+    for (const row of dayBookings) {
+      if (!row.start_time || !row.end_time) continue;
+      const rs = toMinutes(row.start_time.slice(0, 5));
+      const re = toMinutes(row.end_time.slice(0, 5));
+      if (Number.isNaN(rs) || Number.isNaN(re)) continue;
+      if (startMin < re && endMin > rs) {
+        const c = row.console_type as Console;
+        if (c in result) {
+          result[c].push(formatTimeRange12h(row.start_time, row.end_time));
+        }
       }
     }
     return result;
@@ -276,12 +287,13 @@ const Booking = () => {
                       const isFull = remaining <= 0;
                       const almostFull = remaining > 0 && remaining <= 1;
                       const isSelected = booking.console === c.value;
+                      const bookedRanges = bookedRangesByConsole[c.value];
                       return (
                         <button
                           key={c.value}
                           disabled={isFull}
                           onClick={() => setConsole(c.value)}
-                          title={isFull ? "All slots are booked for this time" : undefined}
+                          title={isFull ? "This console is occupied during selected time" : undefined}
                           className={cn(
                             "p-4 rounded-lg border text-center slot-card-hover transition-all duration-300",
                             isFull && "opacity-40 cursor-not-allowed bg-muted border-border blur-[1px]",
@@ -308,6 +320,16 @@ const Booking = () => {
                           >
                             {isFull ? "BOOKED" : almostFull ? `⚠ Almost Full (${remaining}/${limit})` : `${remaining}/${limit} seats`}
                           </div>
+                          {isFull && bookedRanges.length > 0 && (
+                            <div className="text-[9px] mt-1 text-neon-red/90 leading-tight font-medium">
+                              {bookedRanges.slice(0, 2).map((r, i) => (
+                                <div key={i}>{r}</div>
+                              ))}
+                              {bookedRanges.length > 2 && (
+                                <div>+{bookedRanges.length - 2} more</div>
+                              )}
+                            </div>
+                          )}
                         </button>
                       );
                     })}

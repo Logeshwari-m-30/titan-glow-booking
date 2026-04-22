@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import PageTransition from "@/components/PageTransition";
 import gamingBg from "@/assets/gaming-bg.jpg";
 import { useState } from "react";
+import { formatTimeRange12h } from "@/lib/pricing";
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -26,13 +27,14 @@ const Checkout = () => {
     }
 
     setLoading(true);
+    const slotLabel = formatTimeRange12h(booking.startTime, booking.endTime);
     const payload = {
       name: booking.name.trim(),
       phone: booking.phone.trim(),
       booking_date: booking.date ? format(booking.date, "yyyy-MM-dd") : "",
       start_time: booking.startTime,
       end_time: booking.endTime,
-      time_slot: `${booking.startTime} - ${booking.endTime}`,
+      time_slot: slotLabel,
       console_type: booking.console || "",
       players: booking.players,
       price: booking.price,
@@ -87,7 +89,7 @@ const Checkout = () => {
                 <span className="text-muted-foreground">Time</span>
                 <span className="text-foreground">
                   {booking.startTime && booking.endTime
-                    ? `${booking.startTime} – ${booking.endTime}`
+                    ? formatTimeRange12h(booking.startTime, booking.endTime)
                     : "–"}
                 </span>
               </div>
