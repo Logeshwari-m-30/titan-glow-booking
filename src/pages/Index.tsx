@@ -39,7 +39,7 @@ const Index = () => {
             <div className="inline-block my-6 px-6 py-3 rounded-lg bg-destructive/20 neon-border animate-pulse-neon">
               <div className="flex items-center gap-2">
                 <Percent className="w-5 h-5 text-neon-red" />
-                <span className="font-heading text-lg text-neon-red font-bold">Flat 20% OFF on Opening Week!</span>
+                <span className="font-heading text-lg text-neon-red font-bold">Bring Your Squad & Get Special Discounts!</span>
               </div>
             </div>
             
@@ -84,7 +84,7 @@ const Index = () => {
                 <Users className="w-7 h-7 text-primary-foreground" />
               </div>
               <h3 className="font-heading text-lg text-foreground">Group Bookings</h3>
-              <p className="text-sm text-muted-foreground">Book for up to 12 players per slot</p>
+              <p className="text-sm text-muted-foreground">Book for up to 10 players per slot</p>
             </div>
             <div className="flex flex-col items-center gap-3">
               <div className="w-14 h-14 rounded-full gradient-neon flex items-center justify-center animate-glow-breathe">
