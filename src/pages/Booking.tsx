@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBookingStore, type Console, CONSOLE_LIMITS } from "@/lib/bookingStore";
-import { calculatePrice, DURATION_OPTIONS, addMinutesToTime, getDurationMinutes, type Duration } from "@/lib/pricing";
+import { calculatePrice, DURATION_OPTIONS, addMinutesToTime, getDurationMinutes, formatTime12h, formatTimeRange12h, type Duration } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
@@ -31,15 +31,7 @@ const toMinutes = (t: string): number => {
   return h * 60 + m;
 };
 
-const formatTimeLabel = (t: string): string => {
-  const m = toMinutes(t);
-  if (Number.isNaN(m)) return t;
-  const h = Math.floor(m / 60);
-  const mm = (m % 60).toString().padStart(2, "0");
-  const period = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${mm} ${period}`;
-};
+const formatTimeLabel = (t: string): string => formatTime12h(t) || t;
 
 interface BookingRow {
   console_type: string;
