@@ -63,3 +63,26 @@ export const addMinutesToTime = (time: string, minutes: number): string => {
   const nm = (total % 60).toString().padStart(2, "0");
   return `${nh}:${nm}`;
 };
+
+// Format "HH:mm" or "HH:mm:ss" into 12-hour clock with AM/PM, e.g. "10:30 AM"
+export const formatTime12h = (time: string | null | undefined): string => {
+  if (!time) return "";
+  const trimmed = time.slice(0, 5);
+  if (!/^\d{2}:\d{2}$/.test(trimmed)) return time;
+  const [h, m] = trimmed.split(":").map(Number);
+  if (h > 23 || m > 59) return time;
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
+};
+
+// Format a range like "10:30 AM – 11:30 AM"
+export const formatTimeRange12h = (
+  start: string | null | undefined,
+  end: string | null | undefined
+): string => {
+  const s = formatTime12h(start);
+  const e = formatTime12h(end);
+  if (!s || !e) return s || e || "";
+  return `${s} – ${e}`;
+};
