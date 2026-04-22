@@ -287,12 +287,13 @@ const Booking = () => {
                       const isFull = remaining <= 0;
                       const almostFull = remaining > 0 && remaining <= 1;
                       const isSelected = booking.console === c.value;
+                      const bookedRanges = bookedRangesByConsole[c.value];
                       return (
                         <button
                           key={c.value}
                           disabled={isFull}
                           onClick={() => setConsole(c.value)}
-                          title={isFull ? "All slots are booked for this time" : undefined}
+                          title={isFull ? "This console is occupied during selected time" : undefined}
                           className={cn(
                             "p-4 rounded-lg border text-center slot-card-hover transition-all duration-300",
                             isFull && "opacity-40 cursor-not-allowed bg-muted border-border blur-[1px]",
@@ -319,6 +320,16 @@ const Booking = () => {
                           >
                             {isFull ? "BOOKED" : almostFull ? `⚠ Almost Full (${remaining}/${limit})` : `${remaining}/${limit} seats`}
                           </div>
+                          {isFull && bookedRanges.length > 0 && (
+                            <div className="text-[9px] mt-1 text-neon-red/90 leading-tight font-medium">
+                              {bookedRanges.slice(0, 2).map((r, i) => (
+                                <div key={i}>{r}</div>
+                              ))}
+                              {bookedRanges.length > 2 && (
+                                <div>+{bookedRanges.length - 2} more</div>
+                              )}
+                            </div>
+                          )}
                         </button>
                       );
                     })}
