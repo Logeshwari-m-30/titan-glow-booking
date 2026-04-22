@@ -12,6 +12,7 @@ import { calculatePrice, DURATION_OPTIONS, addMinutesToTime, getDurationMinutes,
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
+import AvailableGames from "@/components/AvailableGames";
 import gamingBg from "@/assets/gaming-bg.jpg";
 
 const consoleOptions: { value: Console; label: string; emoji: string }[] = [
@@ -379,6 +380,8 @@ const Booking = () => {
                     </div>
                   </div>
                 )}
+
+                {booking.console && <AvailableGames console={booking.console} />}
               </div>
             )}
 

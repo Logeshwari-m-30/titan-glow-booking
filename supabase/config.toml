@@ -1,1 +1,4 @@
 project_id = "cbvtabaexauttelihdts"
+
+[functions.cancel-booking]
+verify_jwt = false
