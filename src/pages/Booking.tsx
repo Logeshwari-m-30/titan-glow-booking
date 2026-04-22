@@ -103,6 +103,25 @@ const Booking = () => {
     return result;
   }, [dayBookings, startMin, endMin, validTimeRange]);
 
+  // Collect overlapping booked time ranges per console (for "BOOKED (10:30 AM – 11:30 AM)" display)
+  const bookedRangesByConsole = useMemo(() => {
+    const result: Record<Console, string[]> = { PS5: [], PS4: [], PS2: [] };
+    if (!validTimeRange) return result;
+    for (const row of dayBookings) {
+      if (!row.start_time || !row.end_time) continue;
+      const rs = toMinutes(row.start_time.slice(0, 5));
+      const re = toMinutes(row.end_time.slice(0, 5));
+      if (Number.isNaN(rs) || Number.isNaN(re)) continue;
+      if (startMin < re && endMin > rs) {
+        const c = row.console_type as Console;
+        if (c in result) {
+          result[c].push(formatTimeRange12h(row.start_time, row.end_time));
+        }
+      }
+    }
+    return result;
+  }, [dayBookings, startMin, endMin, validTimeRange]);
+
   const getRemaining = (cons: Console): number => {
     if (!validTimeRange) return CONSOLE_LIMITS[cons];
     return Math.max(0, CONSOLE_LIMITS[cons] - overlapByConsole[cons]);
