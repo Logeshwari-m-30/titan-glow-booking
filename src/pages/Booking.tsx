@@ -155,8 +155,9 @@ const Booking = () => {
     if (step === 2)
       return (
         !!booking.console &&
+        !isConsoleBooked(booking.console) &&
         booking.players >= 1 &&
-        booking.players <= remainingForSelected &&
+        booking.players <= maxPlayers &&
         totalPrice > 0
       );
     return false;
@@ -167,8 +168,8 @@ const Booking = () => {
       toast.error("End time must be after start time.");
       return;
     }
-    if (step === 2 && booking.console && booking.players > remainingForSelected) {
-      toast.error(`${booking.console} has only ${remainingForSelected} seats available for this time`);
+    if (step === 2 && booking.console && isConsoleBooked(booking.console)) {
+      toast.error(`${booking.console} is already booked for this time slot`);
       return;
     }
     if (step < 2) setStep(step + 1);
