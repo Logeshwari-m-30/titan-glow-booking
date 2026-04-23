@@ -8,6 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBookingStore, type Console, CONSOLE_LIMITS } from "@/lib/bookingStore";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { calculatePrice, DURATION_OPTIONS, addMinutesToTime, getDurationMinutes, formatTime12h, formatTimeRange12h, type Duration } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -86,19 +87,18 @@ const Booking = () => {
   const validTimeRange =
     !Number.isNaN(startMin) && !Number.isNaN(endMin) && endMin > startMin;
 
-  // Compute overlapping booked players per console for the chosen time window
-  const overlapByConsole = useMemo(() => {
-    const result: Record<Console, number> = { PS5: 0, PS4: 0, PS2: 0 };
+  // Single-booking-per-console rule: any overlapping booking marks the console as BOOKED
+  const isBookedByConsole = useMemo(() => {
+    const result: Record<Console, boolean> = { PS5: false, PS4: false, PS2: false };
     if (!validTimeRange) return result;
     for (const row of dayBookings) {
       if (!row.start_time || !row.end_time) continue;
       const rs = toMinutes(row.start_time.slice(0, 5));
       const re = toMinutes(row.end_time.slice(0, 5));
       if (Number.isNaN(rs) || Number.isNaN(re)) continue;
-      // Overlap: new_start < existing_end AND new_end > existing_start
       if (startMin < re && endMin > rs) {
         const c = row.console_type as Console;
-        if (c in result) result[c] += row.players ?? 0;
+        if (c in result) result[c] = true;
       }
     }
     return result;
@@ -123,19 +123,14 @@ const Booking = () => {
     return result;
   }, [dayBookings, startMin, endMin, validTimeRange]);
 
-  const getRemaining = (cons: Console): number => {
-    if (!validTimeRange) return CONSOLE_LIMITS[cons];
-    return Math.max(0, CONSOLE_LIMITS[cons] - overlapByConsole[cons]);
-  };
-
-  const remainingForSelected = booking.console ? getRemaining(booking.console) : 0;
-  const maxPlayers = booking.console ? remainingForSelected : 1;
+  const isConsoleBooked = (cons: Console): boolean => isBookedByConsole[cons];
+  const maxPlayers = booking.console ? CONSOLE_LIMITS[booking.console] : 1;
 
   useEffect(() => {
-    if (booking.console && booking.players > remainingForSelected && remainingForSelected > 0) {
-      setPlayers(remainingForSelected);
+    if (booking.console && booking.players > maxPlayers) {
+      setPlayers(maxPlayers);
     }
-  }, [remainingForSelected, booking.console]);
+  }, [maxPlayers, booking.console]);
 
   // When duration changes (or start time changes), auto-fill end time
   useEffect(() => {
