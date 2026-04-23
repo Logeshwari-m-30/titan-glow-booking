@@ -318,7 +318,7 @@ const Booking = () => {
                                   ? "text-sm text-neon-red drop-shadow-[0_0_6px_hsl(var(--neon-red))]"
                                   : isSelected
                                   ? "text-[11px] text-primary-foreground/90"
-                                  : "text-[11px] text-green-400 drop-shadow-[0_0_4px_rgba(74,222,128,0.6)]"
+                                  : "text-[11px] text-neon-green drop-shadow-[0_0_4px_hsl(var(--neon-green)/0.7)]"
                               )}
                             >
                               {isBooked ? "BOOKED" : "AVAILABLE"}
