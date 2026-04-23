@@ -277,60 +277,76 @@ const Booking = () => {
                   <label className="font-heading text-sm text-muted-foreground mb-3 block">
                     <Gamepad2 className="w-4 h-4 inline mr-1" /> Select Console
                   </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {consoleOptions.map((c) => {
-                      const limit = CONSOLE_LIMITS[c.value];
-                      const remaining = getRemaining(c.value);
-                      const isFull = remaining <= 0;
-                      const almostFull = remaining > 0 && remaining <= 1;
-                      const isSelected = booking.console === c.value;
-                      const bookedRanges = bookedRangesByConsole[c.value];
-                      return (
-                        <button
-                          key={c.value}
-                          disabled={isFull}
-                          onClick={() => setConsole(c.value)}
-                          title={isFull ? "This console is occupied during selected time" : undefined}
-                          className={cn(
-                            "p-4 rounded-lg border text-center slot-card-hover transition-all duration-300",
-                            isFull && "opacity-40 cursor-not-allowed bg-muted border-border blur-[1px]",
-                            !isFull && !isSelected && "bg-card neon-border hover:neon-glow-purple",
-                            isSelected && "gradient-neon neon-glow-purple border-transparent",
-                            almostFull && !isSelected && "animate-pulse-red"
-                          )}
-                        >
-                          <div className="text-3xl mb-2">{c.emoji}</div>
-                          <div className={cn("font-heading text-xs", isSelected ? "text-primary-foreground" : "text-foreground")}>
-                            {c.value}
-                          </div>
-                          <div
+                  <TooltipProvider delayDuration={150}>
+                    <div className="grid grid-cols-3 gap-3">
+                      {consoleOptions.map((c) => {
+                        const isBooked = isConsoleBooked(c.value);
+                        const isSelected = booking.console === c.value;
+                        const bookedRanges = bookedRangesByConsole[c.value];
+                        const card = (
+                          <button
+                            key={c.value}
+                            disabled={isBooked}
+                            onClick={() => !isBooked && setConsole(c.value)}
                             className={cn(
-                              "text-[10px] mt-2 font-medium",
-                              isFull
-                                ? "text-neon-red"
-                                : almostFull
-                                ? "text-neon-red"
-                                : isSelected
-                                ? "text-primary-foreground/80"
-                                : "text-muted-foreground"
+                              "w-full p-4 rounded-lg border-2 text-center transition-all duration-300",
+                              isBooked &&
+                                "cursor-not-allowed bg-gradient-to-br from-neon-red/30 to-neon-red/10 border-neon-red neon-glow-red",
+                              !isBooked && !isSelected &&
+                                "bg-card neon-border hover:neon-glow-purple slot-card-hover",
+                              !isBooked && isSelected &&
+                                "gradient-neon neon-glow-purple border-transparent slot-card-hover"
                             )}
                           >
-                            {isFull ? "BOOKED" : almostFull ? `⚠ Almost Full (${remaining}/${limit})` : `${remaining}/${limit} seats`}
-                          </div>
-                          {isFull && bookedRanges.length > 0 && (
-                            <div className="text-[9px] mt-1 text-neon-red/90 leading-tight font-medium">
-                              {bookedRanges.slice(0, 2).map((r, i) => (
-                                <div key={i}>{r}</div>
-                              ))}
-                              {bookedRanges.length > 2 && (
-                                <div>+{bookedRanges.length - 2} more</div>
+                            <div className="text-3xl mb-2">{c.emoji}</div>
+                            <div
+                              className={cn(
+                                "font-heading text-xs",
+                                isBooked
+                                  ? "text-foreground"
+                                  : isSelected
+                                  ? "text-primary-foreground"
+                                  : "text-foreground"
                               )}
+                            >
+                              {c.value}
                             </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                            <div
+                              className={cn(
+                                "mt-2 font-heading font-bold tracking-wider",
+                                isBooked
+                                  ? "text-sm text-neon-red drop-shadow-[0_0_6px_hsl(var(--neon-red))]"
+                                  : isSelected
+                                  ? "text-[11px] text-primary-foreground/90"
+                                  : "text-[11px] text-green-400 drop-shadow-[0_0_4px_rgba(74,222,128,0.6)]"
+                              )}
+                            >
+                              {isBooked ? "BOOKED" : "AVAILABLE"}
+                            </div>
+                            {isBooked && bookedRanges.length > 0 && (
+                              <div className="text-[9px] mt-1 text-neon-red/90 leading-tight font-medium">
+                                {bookedRanges.slice(0, 2).map((r, i) => (
+                                  <div key={i}>{r}</div>
+                                ))}
+                                {bookedRanges.length > 2 && (
+                                  <div>+{bookedRanges.length - 2} more</div>
+                                )}
+                              </div>
+                            )}
+                          </button>
+                        );
+                        if (!isBooked) return <div key={c.value}>{card}</div>;
+                        return (
+                          <Tooltip key={c.value}>
+                            <TooltipTrigger asChild>
+                              <div>{card}</div>
+                            </TooltipTrigger>
+                            <TooltipContent>Already Booked</TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
+                  </TooltipProvider>
                   <p className="text-xs text-muted-foreground mt-3">
                     Availability shown for {formatTimeLabel(booking.startTime)} – {formatTimeLabel(booking.endTime)}
                   </p>
@@ -357,7 +373,7 @@ const Booking = () => {
                   </div>
                   {booking.console && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      Max {maxPlayers} players for {booking.console} ({remainingForSelected} seats available for this time)
+                      Max {maxPlayers} players for {booking.console}
                     </p>
                   )}
                 </div>
