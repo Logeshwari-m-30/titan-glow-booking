@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { GAMES_BY_CONSOLE, PLACEHOLDER_IMAGE, fallbackImageFor, type Game } from "@/lib/games";
+import { GAMES_BY_CONSOLE, PLACEHOLDER_IMAGE, type Game } from "@/lib/games";
 import type { Console } from "@/lib/bookingStore";
 
 const PAGE_SIZE = 12;
@@ -28,18 +28,9 @@ const AvailableGames = ({ console: cons }: Props) => {
     setVisible(PAGE_SIZE);
   };
 
-  const handleImgError = (
-    e: React.SyntheticEvent<HTMLImageElement>,
-    name: string
-  ) => {
+  const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
-    const topical = fallbackImageFor(name);
-    // 1st failure → topical Unsplash; 2nd failure → generic gaming Unsplash
-    if (img.src !== topical && !img.src.includes("source.unsplash.com")) {
-      img.src = topical;
-    } else if (img.src !== PLACEHOLDER_IMAGE) {
-      img.src = PLACEHOLDER_IMAGE;
-    }
+    if (img.src !== PLACEHOLDER_IMAGE) img.src = PLACEHOLDER_IMAGE;
   };
 
   return (
@@ -77,12 +68,12 @@ const AvailableGames = ({ console: cons }: Props) => {
           >
             <div className="relative aspect-[3/4] overflow-hidden bg-muted">
               <img
-                src={g.image || fallbackImageFor(g.name)}
+                src={g.image}
                 alt={g.name}
                 loading="lazy"
                 width={768}
                 height={1024}
-                onError={(e) => handleImgError(e, g.name)}
+                onError={handleImgError}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
               {g.popular && (

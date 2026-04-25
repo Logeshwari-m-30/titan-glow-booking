@@ -19,12 +19,12 @@ const COVER = {
   // PS2-era
   batmanBegins: `${W}/4/49/Batman_Begins_video_game.jpg`,
   black: `${W}/2/2c/Black_Coverart.png`,
-  bully: `${W}/4/40/Bully_Scholarship_Edition.jpg`,
+  bully: `${W}/3/3a/Bully_Coverart.png`,
   crazyFrog: `${W}/8/8e/Crazy_Frog_Racer_2_Coverart.png`,
   deadToRights2: `${W}/3/30/Dead_to_Rights_II_Coverart.png`,
   donaldDuck: `${W}/0/06/Donald_Duck_Goin%27_Quackers_PS_NA.jpg`,
   godHand: `${W}/d/dc/God_Hand_Coverart.png`,
-  godOfWar1: `${W}/8/8c/God_of_War_2005_cover.jpg`,
+  godOfWar1: `${W}/a/a3/God_of_War_PAL.jpg`,
   godOfWar2: `${W}/9/97/God_of_War_II.jpg`,
   godOfWar3: `${W}/e/e6/God_of_War_III_cover.jpg`,
   godOfWar2018: `${W}/a/a7/God_of_War_4_cover.jpg`,
@@ -238,14 +238,6 @@ export const GAMES_BY_CONSOLE: Record<Console, Game[]> = {
   PS5: PS5_GAMES,
 };
 
-// Dynamic last-resort fallback (Unsplash) used when a remote URL fails to load
+// Last-resort fallback if a remote URL fails to load
 export const PLACEHOLDER_IMAGE =
-  "https://source.unsplash.com/300x400/?gaming,videogame";
-
-// Build a topical Unsplash fallback for a given game name
-export const fallbackImageFor = (name: string) => {
-  const keyword = encodeURIComponent(
-    name.replace(/[^a-zA-Z0-9 ]/g, " ").trim().split(/\s+/).slice(0, 2).join(",") || "game"
-  );
-  return `https://source.unsplash.com/300x400/?video-game,${keyword}`;
-};
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/300px-No-Image-Placeholder.svg.png";
