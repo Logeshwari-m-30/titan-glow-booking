@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { GAMES_BY_CONSOLE, PLACEHOLDER_IMAGE, type Game } from "@/lib/games";
+import { Skeleton } from "@/components/ui/skeleton";
+import { GAMES_BY_CONSOLE, FALLBACK_IMAGE, type Game } from "@/lib/games";
 import type { Console } from "@/lib/bookingStore";
 
 const PAGE_SIZE = 12;
@@ -28,9 +29,19 @@ const AvailableGames = ({ console: cons }: Props) => {
     setVisible(PAGE_SIZE);
   };
 
-  const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    if (img.src !== PLACEHOLDER_IMAGE) img.src = PLACEHOLDER_IMAGE;
+  const [loaded, setLoaded] = useState<Record<string, boolean>>({});
+  const [errored, setErrored] = useState<Record<string, boolean>>({});
+
+  const markLoaded = (key: string) =>
+    setLoaded((p) => (p[key] ? p : { ...p, [key]: true }));
+
+  const handleImgError = (key: string) => (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const el = e.currentTarget;
+    if (!errored[key]) {
+      setErrored((p) => ({ ...p, [key]: true }));
+      el.src = FALLBACK_IMAGE;
+    }
+    markLoaded(key);
   };
 
   return (
@@ -61,20 +72,31 @@ const AvailableGames = ({ console: cons }: Props) => {
         className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[480px] overflow-y-auto pr-1"
         style={{ scrollbarWidth: "thin" }}
       >
-        {shown.map((g: Game, idx) => (
+        {shown.map((g: Game, idx) => {
+          const key = `${g.name}-${idx}`;
+          const isLoaded = loaded[key];
+          return (
           <div
             key={`${g.name}-${idx}`}
             className="relative group bg-card neon-border rounded-lg overflow-hidden transition-all duration-300 hover:scale-[1.04] hover:neon-glow-purple"
           >
             <div className="relative aspect-[3/4] overflow-hidden bg-muted">
+              {!isLoaded && (
+                <Skeleton className="absolute inset-0 w-full h-full" />
+              )}
               <img
                 src={g.image}
                 alt={g.name}
                 loading="lazy"
+                decoding="async"
                 width={768}
                 height={1024}
-                onError={handleImgError}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                onLoad={() => markLoaded(key)}
+                onError={handleImgError(key)}
+                className={cn(
+                  "w-full h-full object-cover transition-all duration-500 group-hover:scale-110",
+                  isLoaded ? "opacity-100" : "opacity-0"
+                )}
               />
               {g.popular && (
                 <span className="absolute top-1.5 left-1.5 text-[9px] font-heading px-1.5 py-0.5 rounded bg-neon-red/90 text-primary-foreground">
@@ -92,7 +114,8 @@ const AvailableGames = ({ console: cons }: Props) => {
               </div>
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
 
       {hasMore && (
